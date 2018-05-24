@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System.IO;
 using System.Text;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 [InitializeOnLoad]
@@ -172,6 +173,33 @@ public class EditorExt
 					Selection.activeTransform.SetAsFirstSibling();
 				}
 			}
+		}
+	}
+
+	#endregion
+
+	#region UI
+
+	[MenuItem("GameObject/MakePixelPerfect &#p")]
+	public static void MakePixelPerfect()
+	{
+		if (Selection.activeTransform != null)
+		{
+			MakePixelPerfect(Selection.activeTransform as RectTransform);
+		}
+	}
+
+	public static void MakePixelPerfect(RectTransform rectTransform)
+	{
+		if (rectTransform == null) return;
+
+		var pos = rectTransform.anchoredPosition;
+		rectTransform.anchoredPosition = new Vector3(Mathf.RoundToInt(pos.x), Mathf.RoundToInt(pos.y));
+
+		var image = rectTransform.GetComponent<Image>();
+		if (image != null)
+		{
+			image.SetNativeSize();
 		}
 	}
 
