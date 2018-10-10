@@ -3,9 +3,11 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
 [InitializeOnLoad]
@@ -49,6 +51,20 @@ public class EditorExt
 		{
 			Debug.LogError(e.Message);
 		}
+	}
+
+	[MenuItem("GameData/OpenPlayerPrefs", false, 0)]
+	static void OpenPlayerPrefs()
+	{
+#if UNITY_EDITOR_WIN
+		Process ps = new Process();
+		ps.StartInfo.FileName = Application.dataPath + "/Editor/regjump.exe";
+		ps.StartInfo.Arguments = string.Format(@"HKCU\Software\Unity\UnityEditor\{0}\{1}", PlayerSettings.companyName,
+			PlayerSettings.productName);
+		ps.StartInfo.UseShellExecute = true;
+		ps.StartInfo.Verb = "runas";
+		ps.Start();
+#endif
 	}
 
 	[MenuItem("GameData/CleanUpPlayerPrefs", false, 0)]
