@@ -1,4 +1,5 @@
 ﻿using System;
+using Coffee.UIExtensions;
 using DG.Tweening;
 using UnityEngine;
 
@@ -28,13 +29,24 @@ public static class TweenExt
 	/// <param name="duration"></param>
 	/// <param name="follow"></param>
 	/// <returns></returns>
-	public static Tweener DOFollow(this Transform arrow, Vector3 start, Transform target, float duration, bool follow = true)
+	public static Tweener DOFollow2D(this Transform arrow, Vector3 start, Transform target, float duration, bool follow = true)
 	{
 		return DOTween.To(t =>
 		{
 			var newPos = Vector3.Lerp(start, target.position, t);
 			if (follow && Math.Abs(t - 1) > 0.01f)
 				arrow.LookAt2D(newPos);
+			arrow.position = newPos;
+		}, 0, 1, duration).SetTarget(arrow);
+	}
+
+	public static Tweener DOFollow(this Transform arrow, Vector3 start, Transform target, float duration, bool follow = true)
+	{
+		return DOTween.To(t =>
+		{
+			var newPos = Vector3.Lerp(start, target.position, t);
+			if (follow && Math.Abs(t - 1) > 0.01f)
+				arrow.LookAt(newPos);
 			arrow.position = newPos;
 		}, 0, 1, duration).SetTarget(arrow);
 	}
@@ -53,7 +65,7 @@ public static class TweenExt
 	{
 		return DOTween.To(t =>
 		{
-			var newPos = ParabolaLerp2D(start, targetPos, t, parabolaFactor);
+			var newPos = ParabolaLerp(start, targetPos, t, parabolaFactor);
 			//keep follow tangent direction
 			if (follow && Math.Abs(t - 1) > 0.01f)
 				arrow.LookAt2D(newPos);
@@ -75,7 +87,7 @@ public static class TweenExt
 	{
 		return DOTween.To(t =>
 		{
-			var newPos = ParabolaLerp2D(start, target.position, t, parabolaFactor);
+			var newPos = ParabolaLerp(start, target.position, t, parabolaFactor);
 			//keep follow tangent direction
 			if (follow && Math.Abs(t - 1) > 0.01f)
 				arrow.LookAt2D(newPos);
@@ -83,11 +95,29 @@ public static class TweenExt
 		}, 0, 1, duration).SetTarget(arrow);
 	}
 
-	public static Vector3 ParabolaLerp2D(Vector3 start, Vector3 dest, float t, float parabolaFactor = 0.1f)
+	public static Tweener DOParabolaMove(this Transform arrow, Vector3 start, Transform target, float duration, bool follow = true, float parabolaFactor = 0.5f)
+	{
+		return DOTween.To(t =>
+		{
+			var newPos = ParabolaLerp(start, target.position, t, parabolaFactor);
+			//keep follow tangent direction
+			if (follow && Math.Abs(t - 1) > 0.01f)
+				arrow.LookAt(newPos);
+			arrow.position = newPos;
+		}, 0, 1, duration).SetTarget(arrow);
+	}
+
+	public static Vector3 ParabolaLerp(Vector3 start, Vector3 dest, float t, float parabolaFactor = 0.1f)
 	{
 		float c = Vector3.Distance(start, dest) * parabolaFactor;
 		float kk = t - 0.5f;
 		float py = c - 4f * c * kk * kk;
 		return Vector3.Lerp(start, dest, t) + new Vector3(0, py, 0);
+	}
+
+	public static Tweener DOFade(this UITransitionEffect target, float endValue, float duration)
+	{
+		return DOTween.To(() => target.effectFactor, x => target.effectFactor = x, endValue, duration)
+			.SetTarget(target);
 	}
 }
