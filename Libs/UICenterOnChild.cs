@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
@@ -7,17 +8,23 @@ using DG.Tweening;
 [RequireComponent(typeof(ScrollRect))]
 public class UICenterOnChild : MonoBehaviour, IEndDragHandler
 {
-    public delegate void OnCenterCallback(int page);
-    public OnCenterCallback onCenter;
+    public delegate void OnCenterCallback(int index);
+
+    public OnCenterCallback onCenterStart;
+    public OnCenterCallback onCenterEnd;
 
     public Transform Content;
+    public bool snapOnEnable;
     public float snapWatchOffset = 0.5f;
     public float snapTweenTime = 0.2f;
+    public Ease easeType;
 
+    public ScrollRect ScrollRect
+    {
+        get { return _scrollRect; }
+    }
     private ScrollRect _scrollRect;
     private float _perstep;
-    private bool _snapInertia;
-    private int _snapCellViewIndex;
 
     public int CellNum
     {
@@ -66,7 +73,8 @@ public class UICenterOnChild : MonoBehaviour, IEndDragHandler
     void OnEnable()
     {
         ResetItem();
-        Recenter();
+        if (snapOnEnable)
+            Snap();
     }
 
     void OnDisable()
@@ -117,55 +125,77 @@ public class UICenterOnChild : MonoBehaviour, IEndDragHandler
     [ContextMenu("MovePrevious")]
     public void MovePrevious()
     {
-        JumpTo(_curCellIndex - 1, snapTweenTime, SnapJumpComplete);
+        JumpTo(_curCellIndex - 1, snapTweenTime, onCenterStart, onCenterEnd);
     }
 
     [ContextMenu("MoveNext")]
     public void MoveNext()
     {
-        JumpTo(_curCellIndex + 1, snapTweenTime, SnapJumpComplete);
+        JumpTo(_curCellIndex + 1, snapTweenTime, onCenterStart, onCenterEnd);
     }
 
-    [ContextMenu("Recenter")]
-    public void Recenter()
+    [ContextMenu("Snap")]
+    public int Snap()
     {
-        if (_cellNum == 0) return;
+        if (_cellNum == 0) return -1;
 
         // stop the scroller
-        _scrollRect.velocity = Vector2.zero;
+        //_scrollRect.velocity = Vector2.zero;
 
-        // cache the current inertia state and turn off inertia
-        _snapInertia = _scrollRect.inertia;
-        _scrollRect.inertia = false;
+        var snapCellIndex = FindCellIndexAtNormalizedPos(ScrollPosition);
 
-        _snapCellViewIndex = FindCellIndexAtNormalizedPos(ScrollPosition);
+        JumpTo(snapCellIndex, snapTweenTime, onCenterStart, onCenterEnd);
 
-        JumpTo(_snapCellViewIndex, snapTweenTime, SnapJumpComplete);
+        return snapCellIndex;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        Recenter();
+        Snap();
     }
 
-    public void JumpTo(int cellIndex, float tweenTime = 0f, TweenCallback jumpComplete = null)
+    public void JumpTo(int cellIndex, float tweenTime = 0f, OnCenterCallback onStart = null, OnCenterCallback onEnd = null)
     {
         if (cellIndex < 0 || cellIndex >= _cellNum)
             return;
 
         _curCellIndex = cellIndex;
 
-        if (_scrollRect.horizontal)
-            _scrollRect.DOHorizontalNormalizedPos(GetCellScrollPos(cellIndex), tweenTime).OnComplete(jumpComplete);
+        float endScrollPos = GetCellScrollPos(cellIndex);
+        _scrollRect.DOKill();
+        if (tweenTime < 0.001f)
+        {
+            //Instant tween
+            this.ScrollPosition = endScrollPos;
+            if (onStart != null) onStart(cellIndex);
+            if (onEnd != null) onEnd(cellIndex);
+        }
         else
-            _scrollRect.DOVerticalNormalizedPos(GetCellScrollPos(cellIndex), tweenTime).OnComplete(jumpComplete);
+        {
+            //use DOTween move scrollRect
+            if (onStart != null) onStart(cellIndex);
+
+            TweenCallback onTweenFinish = () =>
+            {
+                if (onEnd != null)
+                    onEnd(cellIndex);
+            };
+
+            if (_scrollRect.horizontal)
+                _scrollRect.DOHorizontalNormalizedPos(endScrollPos, tweenTime).OnComplete(onTweenFinish).SetEase(easeType);
+            else
+                _scrollRect.DOVerticalNormalizedPos(endScrollPos, tweenTime).OnComplete(onTweenFinish).SetEase(easeType);
+        }
     }
 
-
-    private void SnapJumpComplete()
+    public void Dispose()
     {
-        _scrollRect.inertia = _snapInertia;
+        onCenterStart = null;
+        onCenterEnd = null;
+    }
 
-        if (onCenter != null) onCenter(_snapCellViewIndex);
+    void OnDestroy()
+    {
+        Dispose();
     }
 }
